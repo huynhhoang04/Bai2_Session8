@@ -21,8 +21,8 @@ public class AppointmentService {
     @Autowired
     private RestTemplate restTemplate;
 
-    @CircuitBreaker(name = "doctorServiceCB")
-    public Appointment createAppointment(AppointmentRequest request) {
+    @CircuitBreaker(name = "doctorServiceCB", fallbackMethod = "getDoctorFallback")
+    public Object createAppointment(AppointmentRequest request) {
         restTemplate.getForObject("http://patient-service/api/v1/patients/" + request.getPatientId(), Object.class);
         restTemplate.getForObject("http://doctor-service/api/v1/doctors/" + request.getDoctorId(), Object.class);
 
@@ -33,5 +33,13 @@ public class AppointmentService {
         appointment.setReason(request.getReason());
         appointment.setStatus("PENDING");
         return appointmentRepository.save(appointment);
+    }
+
+    public Object getDoctorFallback(Exception e) {
+        return new ApiResponseError(
+                "ServiceUnavailable",
+                "Hiện tại không thể kiểm tra thông tin bác sĩ, vui lòng thử lại sau vài giây",
+                DateTimeFormatter.ISO_INSTANT.format(Instant.now())
+        );
     }
 }
